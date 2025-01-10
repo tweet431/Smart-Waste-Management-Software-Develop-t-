@@ -1,0 +1,51 @@
+// Pins for components
+#define TRIG_PIN 2       // Ultrasonic sensor TRIG
+#define ECHO_PIN 3       // Ultrasonic sensor ECHO
+#define RED_LED 5        // Red LED
+#define GREEN_LED 6      // Green LED
+#define BUZZER 7         // Buzzer
+#define MQ135_PIN A0     // MQ-135 signal pin
+
+const int distanceThreshold = 10; // Distance threshold in cm
+
+void setup() {
+  Serial.begin(9600); // Initialize Serial Monitor
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(RED_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+  pinMode(MQ135_PIN, INPUT);
+}
+
+void loop() {
+  long duration = getUltrasonicDistance();
+  int distance = duration * 0.034 / 2;
+  int gasLevel = analogRead(MQ135_PIN);
+
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.print(" cm | Gas Level: ");
+  Serial.println(gasLevel);
+
+  if (distance < distanceThreshold || gasLevel > 400) {
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BUZZER, HIGH);
+  } else {
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(BUZZER, LOW);
+  }
+
+  delay(500);
+}
+
+long getUltrasonicDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  return pulseIn(ECHO_PIN, HIGH);
+}
