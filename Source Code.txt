@@ -1,0 +1,73 @@
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <Servo.h>
+
+// WiFi Credentials
+const char* ssid = "YOUR_WIFI_SSID";      
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// Blynk Auth Token
+char auth[] = "YOUR_BLYNK_AUTH_TOKEN";
+
+// Pin Definitions
+#define IR_SENSOR_PIN 23  
+#define SERVO_PIN 22      
+#define BUZZER_PIN 21     
+#define TRIG_PIN 19       
+#define ECHO_PIN 18       
+#define LED_PIN 5         
+
+// Servo Object
+Servo myServo;
+const int binFullThreshold = 10;  // Threshold distance in centimeters
+
+void setup() {
+    Serial.begin(115200);
+    WiFi.begin(ssid, password);
+    Blynk.begin(auth, ssid, password);
+
+    pinMode(IR_SENSOR_PIN, INPUT);
+    pinMode(BUZZER_PIN, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
+    pinMode(TRIG_PIN, OUTPUT);
+    pinMode(ECHO_PIN, INPUT);
+
+    myServo.attach(SERVO_PIN);
+    myServo.write(0);  // Ensure the bin lid is closed on startup
+}
+
+void loop() {
+    Blynk.run();
+
+    // Detect human presence via the IR sensor and actuate the lid
+    if (digitalRead(IR_SENSOR_PIN) == LOW) {
+        myServo.write(90);   // Open lid
+        delay(3000);         // Maintain open state for 3 seconds
+        myServo.write(0);    // Close lid
+    }
+
+    // Ultrasonic sensor measurement for waste level detection
+    digitalWrite(TRIG_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+    
+    long duration = pulseIn(ECHO_PIN, HIGH);
+    float distance = (duration * 0.0343) / 2;  // Calculate distance in cm
+    
+    // Transmit distance data to the Blynk App for real-time monitoring
+    Blynk.virtualWrite(V1, distance);
+    
+    // Trigger alerts when waste reaches near capacity
+    if (distance < binFullThreshold) {
+        digitalWrite(LED_PIN, HIGH);
+        tone(BUZZER_PIN, 1000);  // Emit a 1 kHz tone
+        delay(2000);
+        noTone(BUZZER_PIN);
+    } else {
+        digitalWrite(LED_PIN, LOW);
+    }
+    
+    delay(1000);  // Loop delay for system stability
+}
